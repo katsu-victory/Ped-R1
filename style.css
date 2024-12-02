@@ -1,0 +1,17 @@
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin: 20px;
+}
+h1 {
+  text-align: center;
+}
+#controls {
+  margin-bottom: 20px;
+}
+#chart {
+  text-align: center;
+}
+.bar {
+  stroke: #333;
+}
