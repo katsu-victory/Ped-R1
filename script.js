@@ -1,61 +1,70 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // データ読み込み
-  d3.csv("data.csv").then(function (data) {
-    // 初期値
-    const metricSelector = document.getElementById("metric");
-    const chartContainer = d3.select("#chart");
+  // サンプルデータのロード
+  const dataPath = "data.csv"; // CSVファイルへのパス
+  const selectedMetrics = [];
 
-    // グラフを描画する関数
-    function drawChart(metric) {
-      chartContainer.html(""); // 既存のグラフをクリア
-
-      const svg = chartContainer
-        .append("svg")
-        .attr("width", 800)
-        .attr("height", 400);
-
-      const xScale = d3
-        .scaleBand()
-        .domain(data.map((d) => d["問番号"]))
-        .range([50, 750])
-        .padding(0.1);
-
-      const yScale = d3
-        .scaleLinear()
-        .domain([0, d3.max(data, (d) => +d[metric])])
-        .range([350, 50]);
-
-      // 軸の描画
-      svg
-        .append("g")
-        .attr("transform", "translate(0,350)")
-        .call(d3.axisBottom(xScale))
-        .selectAll("text")
-        .attr("transform", "rotate(-45)")
-        .style("text-anchor", "end");
-
-      svg.append("g").attr("transform", "translate(50,0)").call(d3.axisLeft(yScale));
-
-      // 棒グラフ
-      svg
-        .selectAll(".bar")
-        .data(data)
-        .enter()
-        .append("rect")
-        .attr("class", "bar")
-        .attr("x", (d) => xScale(d["問番号"]))
-        .attr("y", (d) => yScale(+d[metric]))
-        .attr("width", xScale.bandwidth())
-        .attr("height", (d) => 350 - yScale(+d[metric]))
-        .attr("fill", "#69b3a2");
-    }
-
-    // 初期描画
-    drawChart("overall");
-
-    // セレクターの変更イベント
-    metricSelector.addEventListener("change", function () {
-      drawChart(this.value);
-    });
+  // データテーブルを初期化
+  const table = $("#data-table").DataTable({
+    ajax: {
+      url: dataPath,
+      dataSrc: "",
+    },
+    columns: [
+      { data: "問番号" },
+      { data: "設問内容の要約" },
+      { data: "全体 (%)" },
+      { data: "造血器腫瘍 (%)" },
+      { data: "固形腫瘍 (脳腫瘍を除く) (%)" },
+      { data: "脳腫瘍 (%)" },
+    ],
   });
+
+  // チャート描画
+  const ctx = document.getElementById("comparison-chart").getContext("2d");
+  let comparisonChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [],
+      datasets: [],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "top" },
+        title: { display: true, text: "指標の比較" },
+      },
+    },
+  });
+
+  // 指標を選択して再描画
+  document.getElementById("metric").addEventListener("change", function () {
+    const selected = Array.from(this.selectedOptions).map((option) => option.value);
+    selectedMetrics.splice(0, selectedMetrics.length, ...selected);
+
+    updateChart();
+  });
+
+  // チャートを更新
+  function updateChart() {
+    table.ajax.reload(() => {
+      const data = table.rows().data().toArray();
+      const labels = data.map((row) => row["問番号"]);
+      const datasets = selectedMetrics.map((metric) => ({
+        label: metric,
+        data: data.map((row) => parseFloat(row[metric])),
+        backgroundColor: getRandomColor(),
+      }));
+
+      comparisonChart.data.labels = labels;
+      comparisonChart.data.datasets = datasets;
+      comparisonChart.update();
+    });
+  }
+
+  // ランダムな色を生成
+  function getRandomColor() {
+    return `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(
+      Math.random() * 255
+    )}, ${Math.floor(Math.random() * 255)}, 0.5)`;
+  }
 });
